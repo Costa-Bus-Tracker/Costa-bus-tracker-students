@@ -1,0 +1,32 @@
+================================================================================
+REGISTRO DE CAMBIOS Y AUDITORIA DOCUMENTAL - COSTA BUS TRACKER (VERSION 1.0)
+================================================================================
+Proyecto: Plataforma Web Progresiva (PWA) y Telemetria IoT en Tiempo Real
+Corredor: Autlan de Navarro - Casimiro Castillo - La Huerta - Melaque - Barra de Navidad
+Flota Modelada: 17 autobuses regulares (Autocamiones del Pacifico: 11, Primera Plus: 4, ETN: 2)
+Fecha de Consolidacion: 21 de noviembre de 2026
+
+1. ACTUALIZACION DE ARQUITECTURA TECNICA E INFRAESTRUCTURA AWS
+- Migracion del modelo meramente simulado hacia una arquitectura hibrida validada en campo con nodos fisicos ESP32 + receptor satelital GPS u-blox (NEO-6M/M8N) y simulador en Python (simulator.py).
+- Incorporacion de metricas empiricas reales obtenidas en AWS (region us-east-2, Ohio): 112 invocaciones en 15 minutos, duracion neta promedio de 545.56 ms, duracion facturada conservadora de 1,039 ms y consumo de memoria de 95 MB sobre 128 MB asignados.
+- Dimensionamiento financiero de nube bajo esquema serverless (AWS API Gateway HTTP API + Lambda en Python + DynamoDB Bus-TrackerDB), demostrando un costo operativo de $1.56 a $4.95 USD/mes para toda la flota (intervalo recomendado de 30-60 s), entre 4 y 8 veces mas economico que una instancia EC2 t3.micro.
+- Configuracion de almacenamiento gratuito a largo plazo (< 0.15 GB/mes dentro de los 25 GB permanentes de DynamoDB) con politica Time-To-Live (TTL) a 90 dias y expiracion de CloudWatch Logs a 30 dias.
+
+2. OPTIMIZACION DE HARDWARE EN CABINA Y CONTABILIDAD DUAL
+- Rediseno del kit embarcado aprovechando los puertos USB de 5 V disponibles en la cabina del operador, eliminando convertidores DC-DC automotrices invasivos.
+- Presupuesto unitario validado en $738.00 MXN/unidad (ESP32: $123.00, GPS u-blox + antena: $307.50, Power Bank 5,000 mAh pass-through charging: $246.00, cableado y carcasa 3D: $61.50).
+- Separacion contable estricta entre dos vectores:
+  a) Aportacion Academica (No desembolsable por el cliente): $34,997.00 MXN ($32,640.00 MXN por 960 horas-hombre estudiantiles + $2,357.00 MXN de gastos piloto liquidados por el equipo).
+  b) Inversion Comercial Real (CAPEX Flota de 17 camiones): $12,546.00 MXN en pago unico prorrateable por linea transportista, mas un OPEX anual recurrente de $7,631.00 MXN ($635.92 MXN/mes o $37.41 MXN/mes por camion).
+- Actualizacion de indicadores financieros a 3 anos (ROI comercial de 1,096.2%, VPN de $107,600.85 MXN, TIR de 397.8% y Payback de 3.0 meses) y analisis de sensibilidad ante escenario pesimista (-40% en beneficios).
+
+3. REESTRUCTURACION INTEGRAL, DEPURACION DE REDUNDANCIAS Y ANEXOS
+- Consolidacion de 10 capitulos principales y 37 tablas numeradas consecutivamente, eliminando duplicidades entre la EDT, la linea base y la propuesta tecnico-economica.
+- Estandarizacion de estilo editorial: texto justificado, jerarquia de titulos (1, 2 y 3) en negritas, parrafos introductorios completos por seccion y analisis descriptivo antes y despues de cada tabla.
+- Incorporacion de 5 anexos tecnicos completos:
+  * Anexo A: Auditoria de consistencia tecnica y financiera.
+  * Anexo B: Registro de uso etico de IA generativa y Clausula Preventiva de Exclusiones.
+  * Anexo C: Especificaciones de ingenieria, diccionario NoSQL DynamoDB, eventos WebSockets y formula Haversine con filtro de ruido (> 130 km/h).
+  * Anexo D: Protocolo de aseguramiento de calidad (QA), matriz de 6 casos de prueba (TC-01 a TC-06) y evaluacion psicosocial en paraderos.
+  * Anexo E: Manual tecnico de instalacion no intrusiva en cabina y plan de mantenimiento preventivo semestral.
+================================================================================
