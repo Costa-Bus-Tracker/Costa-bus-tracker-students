@@ -1,0 +1,27 @@
+================================================================================
+REGISTRO DE CAMBIOS Y AUDITORIA DOCUMENTAL - COSTA BUS TRACKER (VERSION 3.0)
+================================================================================
+Proyecto: Plataforma Web Progresiva (PWA) y Telemetria IoT en Tiempo Real
+Corredor: Autlan de Navarro - Casimiro Castillo - La Huerta - Melaque - Barra de Navidad
+Flota Modelada: 17 autobuses regulares (Autocamiones del Pacifico: 11, Primera Plus: 4, ETN: 2)
+Fecha de Actualizacion: 21 de noviembre de 2026
+Base de Partida: Version 2.0 (Secciones 1 a 11 y Anexos A a F)
+
+1. INCORPORACION DE LA SECCION 12: EVALUACION, SELECCION Y CONFIGURACION DE HERRAMIENTAS DE SEGUIMIENTO AGIL
+- Subseccion 12.1 (Evaluacion Comparativa):
+  * Analisis tecnico y comercial de 4 plataformas de gestion: GitHub Projects, Jira Software, Azure DevOps Boards y ClickUp (Tabla 42).
+  * Contraste de soporte Kanban/Scrum, diagramas Gantt/Roadmap, integracion nativa con Git, automatizacion CI/CD, metricas Burndown y costos de licenciamiento.
+- Subseccion 12.2 (Matriz de Seleccion Ponderada):
+  * Evaluacion multicriterio bajo las restricciones de costo cero y monorepo del equipo, justificando matematicamente la eleccion de GitHub Projects con 9.35/10.00 puntos (93.5%) frente a Azure DevOps (8.45) y Jira (8.30) (Tabla 43).
+- Subseccion 12.3 (Guia de Configuracion Inicial):
+  * Definicion del flujo de trabajo en 6 columnas (Backlog -> To Do -> In Progress -> Code Review -> Testing -> Done).
+  * Estandarizacion de etiquetas de severidad vinculadas al SLA (severity: critical, high, medium, low) y subsistemas del monorepo (module: frontend-pwa, backend-node, iot-aws, shared-ci) (Tabla 44).
+
+2. INCORPORACION DEL ANEXO G: AUDITORIA DE AUTOMATIZACION CI/CD Y TRAZABILIDAD DE FLUJOS EN GITHUB PROJECTS
+- Validacion de reglas operativas entre el monorepo (backend, frontend, shared, simulator) y el tablero Kanban.
+- Matriz de trazabilidad automatizada vinculando creacion de ramas, commits, Pull Requests, pipelines en .github/workflows (compilacion de shared y typecheck) y transiciones de tablero (Tabla 45).
+
+3. ESTADO CONSOLIDADO DEL EXPEDIENTE EN VERSION 3.0
+- Estructura total: 12 secciones principales + 7 anexos tecnicos, legales y operativos (Anexos A a G).
+- Total de tablas auditadas y numeradas consecutivamente: 45 tablas.
+================================================================================
