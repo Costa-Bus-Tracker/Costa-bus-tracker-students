@@ -1,0 +1,24 @@
+===================[ Datos de la DB ]===================
+
+
+Tabla: datosUsuario
+Clave de particion: shipment_id (String)
+Clave de ordenacion: device_id (String)
+
+
+
+===================[ Policas de la lambda ]===================
+
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Effect": "Allow",
+			"Action": [
+				"dynamodb:PutItem",
+				"dynamodb:Query"
+			],
+			"Resource": "arn de tu db"
+		}
+	]
+}
