@@ -1,7 +1,8 @@
 // backend/demo_flotilla.js
-const WEBHOOK_URL = "http://localhost:3001/api/aws/webhook/bus-location";
-const WEBHOOK_SECRET = "costabus_aws_secret_2026";
+require("dotenv").config({ path: "./backend/.env" });
 
+const WEBHOOK_URL = "http://localhost:3001/api/aws/webhook/bus-location";
+const WEBHOOK_SECRET = process.env.AWS_WEBHOOK_SECRET || "tu_llave_secreta_aqui";
 // Rutas simuladas en la Costa de Jalisco
 const flotilla = [
   {

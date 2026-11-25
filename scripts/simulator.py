@@ -1,3 +1,4 @@
+import os
 import random
 import time
 import uuid
@@ -5,8 +6,8 @@ from datetime import datetime, timezone
 import requests
 
 # URL pública de Ngrok apuntando a nuestro backend local
-URL = "https://proposal-reckless-unadvised.ngrok-free.dev/api/aws/webhook/bus-location"
-API_KEY = "costabus_aws_secret_2026"
+URL = "http://localhost:3001/api/aws/webhook/bus-location"
+API_KEY = os.getenv("AWS_WEBHOOK_SECRET", "tu_llave_secreta_aqui")
 
 # Puntos de control reales sobre la carretera MEX 80 (La Huerta -> Melaque -> Barra de Navidad)
 WAYPOINTS = [
