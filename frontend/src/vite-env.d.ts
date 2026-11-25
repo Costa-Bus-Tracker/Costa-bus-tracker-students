@@ -11,7 +11,7 @@ interface ImportMetaEnv {
    * - En producción (Netlify) se define, p. ej.
    *   `VITE_BACKEND_URL=https://costa-bus-backend.up.railway.app`.
    */
-  readonly VITE_BACKEND_URL?: string;
+  readonly VITE_DEFAULT_BACKEND_URL?: string;
 }
 
 interface ImportMeta {

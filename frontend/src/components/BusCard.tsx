@@ -1,22 +1,15 @@
-import type { BusUpdate } from "@costa-bus/shared";
+import type { BusDataB2C } from "@costa-bus/shared";
 import { formatEta, operatorBrand } from "@costa-bus/shared";
 import { ALERT_ETA_THRESHOLD_MINUTES } from "../hooks/useSocket";
 
 interface BusCardProps {
-  bus: BusUpdate;
-  /** `true` si este bus es el objetivo del Modo GO. */
+  bus: BusDataB2C;
   isFollowed: boolean;
-  onFollow: (bus: BusUpdate) => void;
-  /** Minutos hasta la parada del usuario, o `null` si no aplica. */
+  onFollow: (bus: BusDataB2C) => void;
   etaToUser: number | null;
-  /** Nombre de la parada de referencia del usuario, o `null`. */
   userStopName: string | null;
 }
 
-/**
- * Tarjeta de un autobús: identificador, operador, próxima parada, ETA, barra de
- * avance y acción para activarlo como objetivo del Modo GO.
- */
 export function BusCard({
   bus,
   isFollowed,
@@ -28,7 +21,6 @@ export function BusCard({
   const approaching =
     !soon && bus.etaMinutes <= ALERT_ETA_THRESHOLD_MINUTES * 2;
 
-  // El acento de la tarjeta es el color de la LÍNEA que opera la unidad.
   const brand = operatorBrand(bus.operator);
 
   const cardClass = [

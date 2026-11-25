@@ -1,21 +1,16 @@
-import type { BusUpdate } from "@costa-bus/shared";
+import type { BusDataB2C } from "@costa-bus/shared";
 import { BusCard } from "./BusCard";
 
 interface BusListProps {
-  buses: BusUpdate[];
+  buses: BusDataB2C[];
   followedBusId: string | null;
-  onFollow: (bus: BusUpdate) => void;
+  onFollow: (bus: BusDataB2C) => void;
   /** ETA (min) de cada bus hasta la parada del usuario; vacío si no hay GPS. */
   etaToUserByBus: Record<string, number>;
   /** Nombre de la parada de referencia del usuario, o `null`. */
   userStopName: string | null;
 }
 
-/**
- * Lista de autobuses de la ruta seleccionada.
- * Con ubicación activa se ordena por tiempo real hasta el usuario; si no, por
- * ETA a la siguiente parada del bus.
- */
 export function BusList({
   buses,
   followedBusId,
@@ -24,8 +19,8 @@ export function BusList({
   userStopName,
 }: BusListProps) {
   const sorted = [...buses].sort((a, b) => {
-    const etaA = etaToUserByBus[a.busId] ?? a.etaMinutes;
-    const etaB = etaToUserByBus[b.busId] ?? b.etaMinutes;
+    const etaA = etaToUserByBus[a.busId] ?? a.etaMinutes ?? Infinity;
+    const etaB = etaToUserByBus[b.busId] ?? b.etaMinutes ?? Infinity;
     return etaA - etaB;
   });
 
