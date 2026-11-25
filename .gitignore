@@ -13,9 +13,12 @@ npm-debug.log*
 # Temporales de verificación
 .tmp-*
 
-# Environment
+# Environment & AWS Secrets
 .env
-.env.local
+.env.*
+!.env.example
+*.pem
+.aws/
 
 # Editor / OS
 .vscode/
