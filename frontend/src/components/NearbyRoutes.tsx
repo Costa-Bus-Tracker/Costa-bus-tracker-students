@@ -1,4 +1,4 @@
-import type { BusUpdate } from "@costa-bus/shared";
+import type { BusDataB2C } from "@costa-bus/shared";
 import { operatorBrand } from "@costa-bus/shared";
 
 /** Una ruta cuyo corredor pasa cerca del usuario. */
@@ -158,6 +158,6 @@ export function badgeForRoute(routeId: string): string {
 }
 
 /** Nombre del operador de una unidad, o `null` si aún no hay telemetría. */
-export function operatorLabel(bus: BusUpdate | undefined): string | null {
+export function operatorLabel(bus: BusDataB2C | undefined): string | null {
   return bus?.operator ?? null;
 }

@@ -8,33 +8,28 @@ import {
   useMap,
 } from "react-leaflet";
 import L from "leaflet";
-import type { BusUpdate, City, Route } from "@costa-bus/shared";
+import type { BusDataB2C, City, Route } from "@costa-bus/shared";
 import { RoutePolyline } from "./RoutePolyline";
 import { BusMarker } from "./BusMarker";
 import type { UserLocation } from "../hooks/useGeolocation";
 
 interface MapViewProps {
   routes: Route[];
-  buses: BusUpdate[];
+  buses: BusDataB2C[];
   selectedRouteId: string;
-  /** Bus objetivo del Modo GO, si está activo. */
   followBusId: string | null;
-  /** Última ubicación conocida del usuario, o `null` si no hay GPS. */
   userLocation: UserLocation | null;
-  /** Punto del usuario proyectado sobre la ruta seleccionada. */
   userPoint: City | null;
 }
 
-/** Centro aproximado de la región cubierta por las rutas. */
 const DEFAULT_CENTER: [number, number] = [19.7, -104.4];
 const DEFAULT_ZOOM = 8;
 
-/** Encuadra el mapa a los límites de la ruta seleccionada. */
 function FitToRoute({ route }: { route: Route | undefined }) {
   const map = useMap();
 
   useEffect(() => {
-    if (!route || route.cities.length === 0) return;
+    if (!route || !route.cities || route.cities.length === 0) return;
     const bounds = L.latLngBounds(
       route.cities.map((city) => [city.lat, city.lng] as [number, number]),
     );
@@ -44,8 +39,7 @@ function FitToRoute({ route }: { route: Route | undefined }) {
   return null;
 }
 
-/** Sigue al bus del Modo GO, recentrando el mapa sin bloquear al usuario. */
-function FollowBus({ bus }: { bus: BusUpdate | null }) {
+function FollowBus({ bus }: { bus: BusDataB2C | null }) {
   const map = useMap();
 
   useEffect(() => {
@@ -56,11 +50,6 @@ function FollowBus({ bus }: { bus: BusUpdate | null }) {
   return null;
 }
 
-/**
- * Ícono de parada. Se alterna el estilo cuando es la siguiente parada de algún
- * autobús visible, para que el usuario vea de un vistazo dónde está el próximo
- * punto de llegada.
- */
 function createStopIcon(active: boolean): L.DivIcon {
   return L.divIcon({
     className: "",
@@ -70,13 +59,6 @@ function createStopIcon(active: boolean): L.DivIcon {
   });
 }
 
-/**
- * Leyenda flotante sobre el mapa.
- *
- * Arranca minimizada en todas las pantallas para no tapar el mapa (con 8 rutas
- * la lista es larga). El usuario la expande con el botón de la cabecera y el
- * estado se conserva mientras navega.
- */
 function Legend({ routes }: { routes: Route[] }) {
   const [open, setOpen] = useState(false);
 
@@ -126,7 +108,7 @@ function Legend({ routes }: { routes: Route[] }) {
               style={{
                 width: 16,
                 height: 3,
-                background: route.color,
+                background: route.color ?? "#999",
                 borderRadius: 2,
                 flexShrink: 0,
               }}
@@ -139,7 +121,6 @@ function Legend({ routes }: { routes: Route[] }) {
   );
 }
 
-/** Ícono del marcador de la ubicación del usuario. */
 const userIcon = L.divIcon({
   className: "",
   html: `<div class="user-marker"><span class="mi">my_location</span></div>`,
@@ -147,8 +128,6 @@ const userIcon = L.divIcon({
   iconAnchor: [13, 13],
 });
 
-/** Mapa interactivo con rutas, paradas y autobuses en movimiento. */
-/** Última posición conocida del usuario, o `null` si aún no hay GPS. */
 export function MapView({
   routes,
   buses,
@@ -167,11 +146,10 @@ export function MapView({
     [buses, selectedRouteId],
   );
 
-  // Paradas que son el siguiente destino de algún bus visible.
   const activeStopKeys = useMemo(() => {
     const keys = new Set<string>();
     for (const bus of visibleBuses) {
-      const city = selectedRoute?.cities[bus.nextStopIndex];
+      const city = selectedRoute?.cities?.[bus.nextStopIndex];
       if (city) keys.add(`${city.lat},${city.lng}`);
     }
     return keys;
@@ -209,7 +187,7 @@ export function MapView({
           />
         ))}
 
-        {selectedRoute?.cities.map((city: City, index: number) => {
+        {selectedRoute?.cities?.map((city: City, index: number) => {
           const isOrigin = index === 0;
           const isDestination = index === selectedRoute.cities.length - 1;
           const active = activeStopKeys.has(`${city.lat},${city.lng}`);
@@ -229,19 +207,18 @@ export function MapView({
           );
         })}
 
-        {/* Un trazo tenue de las paradas de las rutas no seleccionadas. */}
         {routes
           .filter((route) => route.id !== selectedRouteId)
           .flatMap((route) =>
-            route.cities.map((city) => (
+            (route.cities || []).map((city) => (
               <CircleMarker
                 key={`${route.id}-${city.name}`}
                 center={[city.lat, city.lng]}
                 radius={2.5}
                 pathOptions={{
-                  color: route.color,
+                  color: route.color ?? "#999",
                   opacity: 0.45,
-                  fillColor: route.color,
+                  fillColor: route.color ?? "#999",
                   fillOpacity: 0.45,
                 }}
               />

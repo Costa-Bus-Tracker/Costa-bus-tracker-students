@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Costa Bus Tracker — Flotilla en Vivo</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+    body { background: #0b1120; color: #f1f5f9; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+    /* Navbar superior idéntica a la original */
+    header {
+      background: #0d1526; border-bottom: 1px solid #1e293b; padding: 12px 22px;
+      display: flex; justify-content: space-between; align-items: center; height: 58px; flex-shrink: 0;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 1.05rem; color: #f8fafc; }
+    .subtitle { font-size: 0.82rem; color: #64748b; font-weight: 500; }
+    .badge-sim {
+      background: #f59e0b1a; color: #fbbf24; border: 1px solid #f59e0b44;
+      padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600;
+    }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .pill {
+      display: flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px;
+      font-size: 0.8rem; font-weight: 600; background: #162033; border: 1px solid #26354f; color: #cbd5e1;
+    }
+    .pill-live { color: #34d399; border-color: #10b98144; background: #10b98114; }
+
+    /* Contenedor principal */
+    .main { flex: 1; display: flex; overflow: hidden; position: relative; }
+    .map-wrapper { flex: 1; position: relative; height: 100%; }
+    #map { width: 100%; height: 100%; background: #0b1120; }
+
+    /* Botón flotante superior derecho del mapa */
+    .map-floating-btn {
+      position: absolute; top: 14px; right: 14px; z-index: 500;
+      background: #0f172a; color: #e2e8f0; border: 1px solid #334155;
+      padding: 8px 14px; border-radius: 8px; font-size: 0.75rem; font-weight: 700;
+      letter-spacing: 0.05em; box-shadow: 0 4px 12px rgba(0,0,0,0.35); cursor: pointer;
+    }
+
+    /* Tarjeta flotante Modo GO (abajo a la izquierda) */
+    .modo-go-card {
+      position: absolute; bottom: 20px; left: 20px; z-index: 500; width: 320px;
+      background: #0f172aee; backdrop-filter: blur(8px);
+      border: 1px solid #334155; border-radius: 14px; padding: 16px;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.55); display: none;
+    }
+    .modo-go-card.active { display: block; }
+    .mg-top { font-size: 0.82rem; font-weight: 700; color: #e2e8f0; display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .mg-status { font-size: 1.55rem; font-weight: 800; color: #f87171; margin-bottom: 8px; }
+    .mg-info { font-size: 0.82rem; color: #cbd5e1; line-height: 1.55; margin-bottom: 12px; }
+    .mg-actions { display: flex; gap: 8px; margin-bottom: 10px; }
+    .btn-sound {
+      flex: 1; background: #0284c7; color: #fff; border: none; border-radius: 8px;
+      padding: 8px 10px; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    }
+    .btn-stop-sm {
+      background: #ef4444; color: #fff; border: none; border-radius: 8px;
+      padding: 8px 14px; font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    }
+    .mg-footer { font-size: 0.78rem; color: #fca5a5; border-top: 1px solid #1e293b; padding-top: 8px; }
+
+    /* Panel derecho más ancho y con proporciones originales */
+    aside {
+      width: 400px; flex-shrink: 0; background: #0d1526; border-left: 1px solid #1e293b;
+      padding: 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px;
+    }
+    .loc-box {
+      background: #131f36; border: 1px solid #1e3a5f; border-radius: 10px; padding: 12px 14px;
+    }
+    .loc-title { font-size: 0.85rem; font-weight: 700; color: #38bdf8; margin-bottom: 3px; }
+    .loc-sub { font-size: 0.78rem; color: #94a3b8; }
+
+    .section-header {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em;
+      color: #94a3b8; font-weight: 700; margin-bottom: 8px;
+    }
+    .route-controls { display: flex; gap: 8px; align-items: center; }
+    select {
+      flex: 1; background: #131d31; color: #f1f5f9; border: 1px solid #2b3b57;
+      border-radius: 8px; padding: 9px 10px; font-size: 0.82rem; outline: none;
+    }
+    .btn-reverse {
+      background: #162238; color: #cbd5e1; border: 1px solid #2b3b57;
+      border-radius: 8px; padding: 9px 10px; font-size: 0.76rem; cursor: pointer; white-space: nowrap;
+    }
+    .btn-reverse:hover { border-color: #38bdf8; color: #fff; }
+
+    /* Tarjetas de unidades grandes y detalladas */
+    .bus-list { display: flex; flex-direction: column; gap: 14px; }
+    .bus-card {
+      background: #131d31; border: 1px solid #26354f; border-radius: 12px; padding: 15px;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .bus-card.following { border-color: #f87171; background: #1b1b2b; }
+    .bus-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .bus-name { display: flex; align-items: center; gap: 8px; font-size: 1rem; font-weight: 700; color: #f8fafc; }
+    .dot-sq { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+    .bus-eta { font-size: 1rem; font-weight: 800; color: #f87171; }
+    .bus-operator { font-size: 0.82rem; color: #94a3b8; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+    .bus-stop { font-size: 0.88rem; color: #e2e8f0; margin-bottom: 8px; }
+    .bus-stats { display: flex; justify-content: space-between; font-size: 0.82rem; color: #94a3b8; margin-bottom: 8px; }
+    .progress-track { width: 100%; height: 5px; background: #1e293b; border-radius: 999px; overflow: hidden; margin-bottom: 12px; }
+    .progress-fill { height: 100%; border-radius: 999px; transition: width 0.5s ease; }
+
+    .btn-follow {
+      width: 100%; padding: 10px; border-radius: 8px; border: none; font-size: 0.86rem;
+      font-weight: 700; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px;
+      background: #0284c7; color: #ffffff; transition: opacity 0.15s;
+    }
+    .btn-follow:hover { opacity: 0.9; }
+    .btn-follow.active { background: #ef4444; }
+
+    /* Alertas de servicio */
+    .alert-box {
+      background: #131d31; border: 1px solid #26354f; border-radius: 10px; padding: 14px;
+      font-size: 0.82rem; color: #94a3b8; line-height: 1.5;
+    }
+    .alert-title { color: #38bdf8; font-weight: 700; margin-bottom: 4px; display: flex; justify-content: space-between; }
+
+    /* Marcador en mapa */
+    .bus-marker {
+      display: flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; border-radius: 50%; color: white; font-size: 16px;
+      border: 2.5px solid #ffffff; box-shadow: 0 3px 10px rgba(0,0,0,0.55);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <div class="brand">🚌 Costa Bus Tracker</div>
+      <span class="subtitle">Costa de Jalisco · En Vivo</span>
+      <span class="badge-sim">Simulación Flotilla</span>
+    </div>
+    <div class="header-right">
+      <div class="pill" id="arriving-pill">⏱ 2 por llegar</div>
+      <div class="pill pill-live">● En vivo</div>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="map-wrapper">
+      <div id="map"></div>
+      <div class="map-floating-btn" onclick="centrarMapa()">RUTAS ACTIVAS ⌄</div>
+
+      <!-- Tarjeta flotante Modo GO -->
+      <div class="modo-go-card" id="modo-go-card">
+        <div class="mg-top" id="mg-title">🎧 Modo GO · ESP32_001 🚌</div>
+        <div class="mg-status" id="mg-status">¡Llegando!</div>
+        <div class="mg-info" id="mg-info"></div>
+        <div class="mg-actions">
+          <button class="btn-sound" id="btn-sound" onclick="toggleSound()">🔊 Sonido activado</button>
+          <button class="btn-stop-sm" onclick="detenerModoGo()">⏹ Detener</button>
+        </div>
+        <div class="mg-footer" id="mg-footer"></div>
+      </div>
+    </div>
+
+    <aside>
+      <div class="loc-box">
+        <div class="loc-title">◎ Usando tu ubicación</div>
+        <div class="loc-sub">Conectado al corredor Costa de Jalisco · La Huerta</div>
+      </div>
+
+      <div>
+        <div class="section-header"><span>SELECCIONAR RUTA</span></div>
+        <div class="route-controls">
+          <select id="route-select" onchange="filtrarRuta()">
+            <option value="all">Todas las rutas (Costa de Jalisco)</option>
+            <option value="norte-sur">Autlán → La Huerta → Barra</option>
+            <option value="costa">La Huerta → Cihuatlán → Manzanillo</option>
+          </select>
+          <button class="btn-reverse" onclick="centrarMapa()">⇄ Centrar</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-header">
+          <span>UNIDADES ACTIVAS</span>
+          <span id="bus-count" style="color:#f8fafc;">4</span>
+        </div>
+        <div class="bus-list" id="bus-list"></div>
+      </div>
+
+      <div>
+        <div class="section-header"><span>ALERTAS DE SERVICIO</span></div>
+        <div class="alert-box">
+          <div class="alert-title">
+            <span>🕒 En todo momento</span>
+            <span style="color:#64748b; font-weight:500;">Corredor Costa</span>
+          </div>
+          Te avisaremos aquí cuando un autobús esté a 5 minutos o menos de tu parada.
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const map = L.map('map').setView([19.42, -104.56], 10);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    // Punto azul de usuario en La Huerta
+    L.circleMarker([19.4847, -104.6425], {
+      radius: 8, fillColor: '#2563eb', color: '#ffffff', weight: 3, fillOpacity: 1
+    }).bindTooltip('Tu ubicación (La Huerta)', { direction: 'top' }).addTo(map);
+
+    const rutaNorteSur = [
+      { name: "Autlán de Navarro", lat: 19.7708, lng: -104.3639 },
+      { name: "Casimiro Castillo", lat: 19.6047, lng: -104.4342 },
+      { name: "La Huerta", lat: 19.4847, lng: -104.6425 },
+      { name: "Melaque", lat: 19.2244, lng: -104.7064 },
+      { name: "Barra de Navidad", lat: 19.2014, lng: -104.6822 }
+    ];
+
+    const rutaCosta = [
+      { name: "La Huerta", lat: 19.4847, lng: -104.6425 },
+      { name: "Melaque", lat: 19.2244, lng: -104.7064 },
+      { name: "Barra de Navidad", lat: 19.2014, lng: -104.6822 },
+      { name: "Cihuatlán", lat: 19.2369, lng: -104.5653 },
+      { name: "Manzanillo", lat: 19.0522, lng: -104.3158 }
+    ];
+
+    const lineNS = L.polyline(rutaNorteSur.map(p => [p.lat, p.lng]), { color: '#38bdf8', weight: 4, opacity: 0.85 }).addTo(map);
+    const lineCosta = L.polyline(rutaCosta.map(p => [p.lat, p.lng]), { color: '#a855f7', weight: 4, opacity: 0.85, dashArray: '8, 6' }).addTo(map);
+
+    [...rutaNorteSur, rutaCosta[3], rutaCosta[4]].forEach(p => {
+      L.circleMarker([p.lat, p.lng], { radius: 5, fillColor: '#f8fafc', color: '#0f172a', weight: 2, fillOpacity: 1 })
+        .bindTooltip(p.name, { direction: 'top' })
+        .addTo(map);
+    });
+
+    const buses = [
+      { id: "ESP32_001", routeKey: "norte-sur", linea: "Primera Plus", color: "#f59e0b", ruta: rutaNorteSur, seg: 1, t: 0.82, vel: 64 },
+      { id: "ESP32_002", routeKey: "norte-sur", linea: "Autocamiones del Pacífico", color: "#38bdf8", ruta: rutaNorteSur, seg: 2, t: 0.35, vel: 72 },
+      { id: "ESP32_003", routeKey: "costa", linea: "Primera Plus", color: "#a855f7", ruta: rutaCosta, seg: 1, t: 0.65, vel: 68 },
+      { id: "ESP32_004", routeKey: "costa", linea: "Autocamiones del Pacífico", color: "#22c55e", ruta: rutaCosta, seg: 3, t: 0.25, vel: 76 }
+    ];
+
+    let followingId = "ESP32_001";
+    let soundOn = true;
+    let currentFilter = "all";
+
+    buses.forEach(bus => {
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="bus-marker" style="background:${bus.color};">🚌</div>`,
+        iconSize: [34, 34],
+        iconAnchor: [17, 17]
+      });
+      bus.marker = L.marker([bus.ruta[bus.seg].lat, bus.ruta[bus.seg].lng], { icon })
+        .bindPopup(`<b>${bus.id}</b><br>${bus.linea}`)
+        .addTo(map);
+    });
+
+    function centrarMapa() {
+      map.flyTo([19.42, -104.56], 10, { duration: 0.7 });
+    }
+
+    function filtrarRuta() {
+      currentFilter = document.getElementById('route-select').value;
+      renderUI();
+    }
+
+    function toggleFollow(id) {
+      followingId = (followingId === id) ? null : id;
+      if (followingId) {
+        const b = buses.find(x => x.id === followingId);
+        if (b) map.flyTo(b.marker.getLatLng(), 12, { duration: 0.7 });
+      }
+      renderUI();
+    }
+
+    function detenerModoGo() {
+      followingId = null;
+      renderUI();
+    }
+
+    function toggleSound() {
+      soundOn = !soundOn;
+      document.getElementById('btn-sound').innerText = soundOn ? '🔊 Sonido activado' : '🔇 Silenciado';
+    }
+
+    function actualizarPosiciones() {
+      buses.forEach(bus => {
+        bus.t += 0.012;
+        if (bus.t >= 1) {
+          bus.t = 0;
+          bus.seg = (bus.seg + 1) % (bus.ruta.length - 1);
+        }
+        const origen = bus.ruta[bus.seg];
+        const destino = bus.ruta[bus.seg + 1];
+        const lat = origen.lat + (destino.lat - origen.lat) * bus.t;
+        const lng = origen.lng + (destino.lng - origen.lng) * bus.t;
+
+        bus.lat = lat;
+        bus.lng = lng;
+        bus.destino = destino.name;
+        bus.eta = Math.max(1, Math.round((1 - bus.t) * 18));
+        bus.progreso = Math.min(99, Math.round(((bus.seg + bus.t) / (bus.ruta.length - 1)) * 100));
+        bus.velActual = (bus.vel + (Math.random() * 3 - 1.5)).toFixed(1);
+
+        bus.marker.setLatLng([lat, lng]);
+      });
+      renderUI();
+    }
+
+    function renderUI() {
+      const listEl = document.getElementById('bus-list');
+      listEl.innerHTML = '';
+
+      const visibles = buses.filter(b => currentFilter === 'all' || b.routeKey === currentFilter);
+      document.getElementById('bus-count').innerText = visibles.length;
+
+      const porLlegar = visibles.filter(b => b.eta <= 5).length;
+      document.getElementById('arriving-pill').innerText = `⏱ ${porLlegar} por llegar`;
+
+      visibles.forEach(bus => {
+        const isFollowing = bus.id === followingId;
+        const card = document.createElement('div');
+        card.className = `bus-card ${isFollowing ? 'following' : ''}`;
+        card.innerHTML = `
+          <div class="bus-card-top">
+            <div class="bus-name">
+              <span class="dot-sq" style="background:${bus.color};"></span>
+              🚌 ${bus.id}
+            </div>
+            <div class="bus-eta">${bus.eta} min</div>
+          </div>
+          <div class="bus-operator">
+            <span style="color:${bus.color};">■</span> ${bus.linea}
+          </div>
+          <div class="bus-stop">Próxima parada: <b>${bus.destino}</b></div>
+          <div class="bus-stats">
+            <span>Velocidad: ${bus.velActual} km/h</span>
+            <span>${bus.progreso}% del recorrido</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width:${bus.progreso}%; background:${bus.color};"></div>
+          </div>
+          <button class="btn-follow ${isFollowing ? 'active' : ''}" onclick="toggleFollow('${bus.id}')">
+            ${isFollowing ? '⏹ Detener Modo GO' : '🎧 Seguir este bus'}
+          </button>
+        `;
+        listEl.appendChild(card);
+      });
+
+      // Actualizar tarjeta flotante Modo GO
+      const mgCard = document.getElementById('modo-go-card');
+      const activeBus = buses.find(b => b.id === followingId);
+      if (activeBus) {
+        mgCard.classList.add('active');
+        document.getElementById('mg-title').innerText = `🎧 Modo GO · ${activeBus.id} 🚌`;
+        document.getElementById('mg-status').innerText = activeBus.eta <= 5 ? '¡Llegando!' : 'En camino';
+        document.getElementById('mg-info').innerHTML = `
+          ${activeBus.linea}<br/>
+          Próxima parada: <b>${activeBus.destino}</b><br/>
+          Tiempo restante estimado: <b>${activeBus.eta} min</b><br/>
+          Velocidad: ${activeBus.velActual} km/h
+        `;
+        document.getElementById('mg-footer').innerText = `El autobús está a ${activeBus.eta} min de ${activeBus.destino}.`;
+      } else {
+        mgCard.classList.remove('active');
+      }
+    }
+
+    actualizarPosiciones();
+    setInterval(actualizarPosiciones, 1000);
+  </script>
+</body>
+</html>

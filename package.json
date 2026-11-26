@@ -2,29 +2,33 @@
   "name": "costa-bus-tracker",
   "version": "1.0.0",
   "private": true,
-  "description": "Rastreo GPS en tiempo real de autobuses de pasajeros en la Costa de Jalisco, México (fase 1: datos simulados).",
+  "description": "Rastreo GPS en tiempo real de autobuses de pasajeros en la Costa de Jalisco, México.",
   "workspaces": [
     "shared",
-    "simulator",
-    "backend",
     "frontend"
   ],
   "scripts": {
-    "dev": "concurrently -n backend,simulator,frontend -c green,blue,magenta \"npm:dev:backend\" \"npm:dev:simulator\" \"npm:dev:frontend\"",
-    "dev:backend": "npm run dev --workspace backend",
-    "dev:simulator": "npm run dev --workspace simulator",
-    "dev:frontend": "npm run dev --workspace frontend",
-    "build": "npm run build --workspace shared && npm run build --workspace backend && npm run build --workspace simulator && npm run build --workspace frontend",
-    "typecheck": "npm run build --workspace @costa-bus/shared && npm run typecheck --workspace backend && npm run typecheck --workspace simulator && npm run typecheck --workspace frontend",
-    "start": "concurrently -n backend,simulator -c green,blue \"npm:start:backend\" \"npm:start:simulator\"",
-    "start:backend": "npm run start --workspace backend",
-    "start:simulator": "npm run start --workspace simulator"
+    "dev": "concurrently -n backend,frontend -c green,magenta \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:backend": "npx tsx watch backend/src/index.ts",
+    "dev:frontend": "npm run dev --workspace @costa-bus/frontend",
+    "build": "npm run build --workspace @costa-bus/shared && npm run build --workspace @costa-bus/frontend",
+    "typecheck": "npm run build --workspace @costa-bus/shared && npm run typecheck --workspace @costa-bus/frontend",
+    "start": "npx tsx backend/src/index.ts"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.6",
     "concurrently": "8.2.2",
     "typescript": "5.5.3"
   },
   "engines": {
     "node": ">=20"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
+    "socket.io": "^4.8.4"
   }
 }

@@ -1,4 +1,4 @@
-import { BACKEND_URL } from '@costa-bus/shared';
+import { DEFAULT_BACKEND_URL } from '@costa-bus/shared';
 
 /**
  * Resuelve la URL del backend de telemetría según el entorno.
@@ -9,7 +9,7 @@ import { BACKEND_URL } from '@costa-bus/shared';
  *   backend desplegado. Sin barra final para no romper la URL de Socket.io.
  */
 export function resolveBackendUrl(): string {
-  const fromEnv = import.meta.env.VITE_BACKEND_URL?.trim();
-  if (!fromEnv) return BACKEND_URL;
+  const fromEnv = import.meta.env.VITE_DEFAULT_BACKEND_URL?.trim();
+  if (!fromEnv) return DEFAULT_BACKEND_URL;
   return fromEnv.replace(/\/+$/, '');
 }

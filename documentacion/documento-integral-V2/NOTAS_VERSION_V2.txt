@@ -1,0 +1,31 @@
+================================================================================
+REGISTRO DE CAMBIOS Y AUDITORIA DOCUMENTAL - COSTA BUS TRACKER (VERSION 2.0)
+================================================================================
+Proyecto: Plataforma Web Progresiva (PWA) y Telemetria IoT en Tiempo Real
+Corredor: Autlan de Navarro - Casimiro Castillo - La Huerta - Melaque - Barra de Navidad
+Flota Modelada: 17 autobuses regulares (Autocamiones del Pacifico: 11, Primera Plus: 4, ETN: 2)
+Fecha de Actualizacion: 21 de noviembre de 2026
+Base de Partida: Version 1.0 (Secciones 1 a 10 y Anexos A a E)
+
+1. INCORPORACION DE LA SECCION 11: MARCO CONTRACTUAL, PROPIEDAD INTELECTUAL Y SLA
+- Subseccion 11.1 (Contrato Principal de Desarrollo y Propiedad Intelectual):
+  * Formalizacion del objeto contractual para las Fases 1 y 2 (Hitos H1 a H10).
+  * Resguardo de derechos morales y patrimoniales del codigo fuente (TypeScript, Python, C++) mediante registro ante INDAUTOR y licencia operativa no exclusiva para las lineas transportistas.
+  * Regulacion de uso licito de librerias open-source (MIT, Apache 2.0, BSD, ODbL).
+  * Esquema de pagos escalonados contra hitos sobre el CAPEX de hardware ($12,546.00 MXN: 40% anticipo, 40% MVP/Modo GO/B2B, 20% cierre e instalacion en 17 unidades) y clausulas de penalizacion por mora o scope creep (Tabla 38).
+- Subseccion 11.2 (Acuerdo de Confidencialidad y No Divulgacion - NDA):
+  * Clasificacion de activos confidenciales: variables de entorno (.env), llaves IAM de AWS, token x-api-key, esquemas DynamoDB (Bus-TrackerDB), credenciales del panel /admin y telemetria de flota (Tabla 39).
+  * Cumplimiento de la Ley Federal de Proteccion de Datos Personales en Posesion de los Particulares (LFPDPPP) mediante procesamiento local en navegador de la geolocalizacion del pasajero y anonimizacion de encuestas.
+  * Vigencia de reserva por 3 anos, prohibicion de credenciales en repositorios GitHub y pena convencional por filtracion equivalente al 100% del CAPEX contratado.
+- Subseccion 11.3 (Acuerdo de Nivel de Servicio - SLA):
+  * Compromiso de disponibilidad mensual (Uptime) del 99.5% en infraestructura cloud (AWS API Gateway, Lambda, DynamoDB y servidor Node.js).
+  * Ventanas de mantenimiento programado (domingos de 01:00 a 04:00 h) y exclusiones expresas por zonas de sombra celular 4G en tramos serranos o danos fisicos en cabina.
+  * Matriz de niveles de severidad (Nivel 1 Critica a Nivel 4 Baja) con tiempos maximos de respuesta (desde 30 min) y resolucion (desde 4 h) (Tabla 40).
+
+2. INCORPORACION DEL ANEXO F: AUDITORIA LEGAL Y DE CIBERSEGURIDAD (USO ETICO DE IA)
+- Documentacion de la auditoria preventiva asistida por IA generativa aplicada sobre los instrumentos contractuales de la Seccion 11.
+- Registro de 5 vulnerabilidades detectadas y salvaguardas incorporadas (Tabla 41): distincion entre titularidad de codigo (INDAUTOR) y propiedad de datos operativos de flota, prevencion de exposicion de secretos en commits de GitHub, cumplimiento LFPDPPP en geolocalizacion del pasajero, exclusion de cobertura celular serrana en el SLA y delimitacion de custodia fisica del kit ESP32 en cabina.
+
+3. ESTADO CONSOLIDADO DEL EXPEDIENTE EN VERSION 2.0
+- Estructura total: 11 secciones principales + 6 anexos tecnicos y legales (Anexos A a F).
+- Total de tablas auditadas y numeradas consecutivamente: 46 tablas.

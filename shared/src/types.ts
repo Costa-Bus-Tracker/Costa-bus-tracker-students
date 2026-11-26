@@ -1,126 +1,100 @@
-/**
- * Tipos compartidos entre simulator, backend y frontend.
- *
- * Contrato de datos: el simulador (o, en el futuro, el ingestador de hardware
- * Teltonika) produce `BusPosition`, el backend reenvía `BusUpdate` / `BusAlert`
- * y el frontend los consume sin conocer el origen de la señal.
- */
+// ==========================================
+// NUEVOS TIPOS: INGESTA AWS Y WEBSOCKETS (RBAC)
+// ==========================================
 
-/** Ciudad o parada sobre una ruta. */
-export interface City {
-  /** Nombre legible mostrado en el panel y en el mapa. */
-  name: string;
-  /** Latitud en grados decimales (WGS84). */
-  lat: number;
-  /** Longitud en grados decimales (WGS84). */
-  lng: number;
+export interface BusDataAWS {
+  numCamion: string;
+  measurement_id?: string;
+  latitude: number;
+  longitude: number;
+  altitude_m?: number;
+  satellites?: number;
+  captured_at: string;
 }
 
-/** Empresa transportista y sus enlaces oficiales de venta de boletos. */
-export interface Operator {
-  /** Nombre comercial del operador. */
+export interface BusDataB2C {
+  busId: string;
+  routeId: string;
+  routeName: string;
+  lat: number;
+  lng: number;
+  speedKmh: number;
+  nextStopIndex: number;
+  nextStopName: string;
+  etaMinutes: number;
+  operator: string;
+  progress: number;
+  estadoConexion: 'Conectado' | 'Sin conexion';
+}
+
+export interface BusDataB2B extends BusDataB2C {
+  altitude_m?: number;
+  satellites?: number;
+  chofer: string;
+  placa: string;
+  origen: string;
+  destino: string;
+  alerta: 'OK' | 'DETENIDO' | 'OFFLINE';
+  lastPing: string;
+}
+
+export interface SocketAuthResponse {
+  message?: string;
+  error?: string;
+}
+
+export interface Alert {
+  id: string;
+  busId?: string;
+  stopName?: string;
+  message: string;
+  timestamp: number;
+}
+
+// ==========================================
+// TIPOS ORIGINALES DEL FRONTEND (INTACTOS)
+// ==========================================
+
+export interface City {
+  id?: string;
   name: string;
-  /** URL oficial de compra de boletos. */
-  purchaseUrl: string;
-  /** URL alternativa si el sitio principal no responde. */
+  lat: number;
+  lng: number;
+  coordinates?: [number, number];
+}
+
+export interface Operator {
+  id?: string;
+  name: string;
+  color?: string;
+  purchaseUrl?: string;
   fallbackUrl?: string;
 }
 
-/** Ruta completa: lista ordenada de paradas + operadores que la cubren. */
 export interface Route {
-  /** Identificador estable, p. ej. "gdl-barra-navidad". */
   id: string;
-  /** Nombre legible de la ruta. */
-  name: string;
-  /** Color hex usado en el mapa y en la interfaz. */
-  color: string;
-  /** Paradas en orden de recorrido (índice 0 = origen). */
+  name?: string;
+  operatorId?: string;
+  operators?: Operator[];
+  originId?: string;
+  destinationId?: string;
   cities: City[];
-  /** Operadores que ofrecen esta ruta. */
-  operators: Operator[];
+  path?: [number, number][];
+  color?: string;
 }
 
-/** Posición GPS puntual de un autobús en un instante dado. */
-export interface BusPosition {
-  /** Identificador de la unidad (en producción: ID del dispositivo GPS). */
-  busId: string;
-  /** Ruta que está recorriendo. */
-  routeId: string;
-  /** Nombre del operador al que pertenece la unidad. */
-  operator: string;
-  /** Latitud actual. */
-  lat: number;
-  /** Longitud actual. */
-  lng: number;
-  /** Velocidad instantánea en km/h. */
-  speedKmh: number;
-  /** Índice (dentro de `Route.cities`) de la siguiente parada. */
-  nextStopIndex: number;
-  /** Nombre de la siguiente parada. */
-  nextStopName: string;
-  /** Minutos restantes para llegar a la siguiente parada. */
-  etaMinutes: number;
-  /** Progreso del recorrido completo, de 0 a 1. */
-  progress: number;
-  /** Marca temporal UNIX en milisegundos. */
-  timestamp: number;
-}
+// ==========================================
+// CONSTANTES DEL SISTEMA
+// ==========================================
 
-/**
- * Actualización que el backend difunde a los clientes.
- * Extiende la posición con datos derivados del servidor.
- */
-export interface BusUpdate extends BusPosition {
-  /** Nombre de la ruta (desnormalizado para pintar la interfaz sin lookup). */
-  routeName: string;
-  /** Color de la ruta, útil para marcadores y lista. */
-  routeColor: string;
-}
+export const DEFAULT_BACKEND_URL = 'http://localhost:3001';
 
-/** Alerta emitida cuando un autobús está a punto de llegar (ETA ≤ umbral). */
-export interface Alert {
-  /** Identificador único de la alerta. */
-  id: string;
-  /** Unidad que la genera. */
-  busId: string;
-  /** Ruta asociada. */
-  routeId: string;
-  /** Texto listo para mostrar en pantalla. */
-  message: string;
-  /** Parada a la que se aproxima. */
-  stopName: string;
-  /** Minutos restantes en el momento de la alerta. */
-  etaMinutes: number;
-  /** Marca temporal UNIX en milisegundos. */
-  timestamp: number;
-}
-
-/** Umbral (minutos) por debajo o igual al cual se genera una alerta. */
-export const ALERT_ETA_THRESHOLD_MINUTES = 5;
-
-/** Intervalo (ms) con el que el simulador emite nuevas posiciones. */
-export const SIMULATOR_TICK_MS = 3000;
-
-/** Puerto del backend Express + Socket.io. */
-export const BACKEND_PORT = 4000;
-
-/** URL del backend consumida por el frontend y por el simulador. */
-export const BACKEND_URL = `http://localhost:${BACKEND_PORT}`;
-
-/** Nombres de los eventos de Socket.io usados en el canal de telemetría. */
 export const SOCKET_EVENTS = {
-  /** Simulador → Backend: nueva posición cruda. */
-  BUS_POSITION: 'bus-position',
-  /** Backend → Clientes: posición enriquecida. */
-  BUS_UPDATE: 'bus-update',
-  /** Backend → Clientes: alerta de proximidad. */
-  BUS_ALERT: 'bus-alert',
-  /** Backend → Clientes: catálogo de rutas disponibles. */
-  ROUTES: 'routes',
-  /** Backend → Cliente que se conecta: estado inicial completo. */
-  SNAPSHOT: 'bus-snapshot',
+  CONNECT: 'connect',
+  DISCONNECT: 'disconnect',
+  JOIN_ROLE: 'join-role',
+  BUS_UPDATE_B2B: 'bus-update-b2b',
+  BUS_UPDATE_B2C: 'bus-update-b2c',
+  AUTH_SUCCESS: 'auth-success',
+  AUTH_ERROR: 'auth-error',
 } as const;
-
-/** Nombres concretos de los eventos (tipado para Socket.io). */
-export type SocketEvent =
-  (typeof SOCKET_EVENTS)[keyof typeof SOCKET_EVENTS];

@@ -1,21 +1,14 @@
-import { formatEta, type BusUpdate } from '@costa-bus/shared';
+import { formatEta, type BusDataB2C } from '@costa-bus/shared';
 import { ALERT_ETA_THRESHOLD_MINUTES } from '../hooks/useSocket';
 
 interface GoModePanelProps {
-  /** Bus que se está siguiendo; `null` desactiva el panel. */
-  bus: BusUpdate | null;
-  /** `true` mientras suena la alarma de proximidad. */
+  bus: BusDataB2C | null;
   ringing: boolean;
-  /** Sonido activado/desactivado por el usuario. */
   soundEnabled: boolean;
   onToggleSound: () => void;
   onStop: () => void;
 }
 
-/**
- * Panel flotante del Modo GO: sigue a un autobús concreto y avisa (con sonido
- * cuando está habilitado) en cuanto entra en el umbral de llegada.
- */
 export function GoModePanel({
   bus,
   ringing,

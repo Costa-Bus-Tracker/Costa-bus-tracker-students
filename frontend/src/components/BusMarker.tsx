@@ -4,7 +4,7 @@ import L from "leaflet";
 import {
   formatEta,
   operatorBrand,
-  type BusUpdate,
+  type BusDataB2C,
 } from "@costa-bus/shared";
 import { ALERT_ETA_THRESHOLD_MINUTES } from "../hooks/useSocket";
 import {
@@ -13,18 +13,12 @@ import {
 } from "../hooks/useSmoothPosition";
 
 interface BusMarkerProps {
-  bus: BusUpdate;
-  /** `true` si este bus es el objetivo del Modo GO. */
+  bus: BusDataB2C;
   highlighted: boolean;
 }
 
-/**
- * Construye el ícono circular del autobús.
- *
- * El color lo determina la LÍNEA que opera la unidad (dorado Primera Plus,
- * azul Autocamiones del Pacífico, plata ETN), no la ruta: así se distingue de
- * un vistazo qué empresa pasa por el mapa.
- */
+const TELEMETRY_INTERVAL_MS = 10_000;
+
 function createBusIcon(
   color: string,
   textColor: string,
@@ -40,33 +34,23 @@ function createBusIcon(
   });
 }
 
-/**
- * Marcador de autobús.
- *
- * Recibe la última posición conocida y anima su desplazamiento en el intervalo
- * entre ticks del servidor, de modo que el movimiento se vea continuo en lugar
- * de a saltos cada 3 segundos.
- */
 export function BusMarker({ bus, highlighted }: BusMarkerProps) {
   const urgent = bus.etaMinutes <= ALERT_ETA_THRESHOLD_MINUTES;
 
-  // Posición animada: parte del punto actual y avanza hacia donde estará el bus
-  // cuando llegue el siguiente tick, a la velocidad reportada.
   const target = useMemo(
     () =>
       interpolatePosition(
         bus.lat,
         bus.lng,
         bus.speedKmh,
-        3000,
+        TELEMETRY_INTERVAL_MS,
         bus.progress,
         bus.routeId,
       ),
     [bus.lat, bus.lng, bus.speedKmh, bus.progress, bus.routeId],
   );
 
-  const position = useSmoothPosition(bus.lat, bus.lng, target, 3000);
-
+  const position = useSmoothPosition(bus.lat, bus.lng, target, TELEMETRY_INTERVAL_MS);
   const brand = useMemo(() => operatorBrand(bus.operator), [bus.operator]);
 
   const icon = useMemo(

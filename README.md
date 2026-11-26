@@ -1,255 +1,325 @@
 # 🚌 Costa Bus Tracker
 
-Rastreo en tiempo real de autobuses de pasajeros circulando por la **Costa de Jalisco, México**.
+![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
+![AWS](https://img.shields.io/badge/AWS-Serverless-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white)
+![ESP32](https://img.shields.io/badge/Hardware-ESP32%20%2B%20GPS-E7352C?style=for-the-badge&logo=espressif&logoColor=white)
+![Leaflet](https://img.shields.io/badge/Mapas-Leaflet-199900?style=for-the-badge&logo=leaflet&logoColor=white)
 
-> **Fase 1 (actual):** posiciones GPS **simuladas** por un motor de interpolación.
-> La arquitectura ya está desacoplada para migrar a **hardware GPS real (Teltonika)** sin
-> tocar el frontend: solo hay que sustituir el simulador por un ingestador que emita el
-> mismo evento `bus-position` en el mismo formato.
+**Sistema integral de monitoreo, telemetría y rastreo GPS en tiempo real para el transporte público foráneo en la región de la Costa Sur de Jalisco, México.**
 
----
-
-## Arquitectura (monorepo con npm workspaces)
-
-```
-costa-bus-tracker/
-├── package.json          # workspaces: shared, simulator, backend, frontend
-├── shared/               # Tipos TS + definición de rutas + utilidades (geo, ETA)
-├── simulator/            # Node.js: emite posiciones GPS falsas cada 3 s
-├── backend/              # Express + Socket.io (puerto 4000)
-└── frontend/             # Vite + React + TypeScript + react-leaflet (puerto 5173)
-```
-
-### Flujo de datos
-
-```
-Simulator (interpola posiciones entre ciudades)
-        │  socket.emit("bus-position")
-        ▼
-Backend :4000  ──reenvía──▶  socket.emit("bus-update")  →  todos los clientes
-        │
-        └── si ETA ≤ 5 min ──▶ socket.emit("bus-alert")
-        ▼
-Frontend :5173  (hook useSocket → estado React)
-        │
-        └──▶ Mapa Leaflet: marcadores se mueven suavemente
-```
+La plataforma enlaza dispositivos físicos embarcados en las unidades de transporte con una infraestructura híbrida en la nube (AWS) y una aplicación web progresiva interactiva. Este ecosistema permite a los pasajeros consultar ubicaciones en vivo, tiempos estimados de llegada (ETA) y alertas sonoras de proximidad, al mismo tiempo que proporciona a los operadores y administradores un panel centralizado para la supervisión operativa de la flotilla.
 
 ---
 
-## Stack
+## 📑 Tabla de Contenidos
 
-| Capa      | Tecnología                                          |
-| --------- | --------------------------------------------------- |
-| Runtime   | Node.js 20+                                         |
-| Backend   | Express 4.19.2 · Socket.io 4.7.5                    |
-| Simulator | Node.js · Socket.io-client 4.7.5 · TypeScript       |
-| Frontend  | React 18.3.1 · Vite 5.3.4 · TypeScript 5.5.3        |
-| Mapa      | Leaflet 1.9.4 · react-leaflet 4.2.1 · OpenStreetMap |
-| Orquest.  | concurrently 8.2.2                                  |
+- [Cobertura Geográfica y Corredores Operativos](#-cobertura-geográfica-y-corredores-operativos)
+- [Arquitectura del Sistema y Flujo de Datos](#-arquitectura-del-sistema-y-flujo-de-datos)
+- [Funcionalidades Principales](#-funcionalidades-principales)
+- [Stack Tecnológico](#-stack-tecnológico)
+- [Estructura del Repositorio](#-estructura-del-repositorio)
+- [Instalación y Configuración Local](#-instalación-y-configuración-local)
+- [Especificación del Webhook de Telemetría](#-especificación-del-webhook-de-telemetría-aws--backend)
+- [Pruebas y Simulación de Flotilla](#-pruebas-y-simulación-de-flotilla)
+- [Equipo de Desarrollo e Integración](#-equipo-de-desarrollo-e-integración)
+- [Licencia y Uso](#-licencia-y-uso)
 
 ---
 
-## Puesta en marcha
+## 🗺️ Cobertura Geográfica y Corredores Operativos
+
+El sistema está diseñado y calibrado específicamente para la red carretera federal y estatal de la región **Costa Sur** y **Sierra de Amula**, cubriendo los principales puntos de origen, destino y paradas intermedias:
+
+- **Autlán de Navarro**
+- **Casimiro Castillo**
+- **La Huerta**
+- **San Patricio - Melaque**
+- **Barra de Navidad**
+- **Cihuatlán**
+- **Manzanillo (Colima)**
+
+---
+
+## 🏗️ Arquitectura del Sistema y Flujo de Datos
+
+La plataforma opera bajo una arquitectura distribuida orientada a eventos (*Event-Driven Architecture*), integrando hardware embebido IoT, cómputo *serverless* en Amazon Web Services y comunicación bidireccional de baja latencia mediante WebSockets:
+
+```text
+[ESP32 + Módulo GPS] ──(HTTPS / JSON)──▶ [AWS API Gateway + AWS Lambda]
+                                                    │
+                                      ┌─────────────┴─────────────┐
+                                      ▼                           ▼
+                            [Amazon DynamoDB]         (POST + x-api-key)
+                            (Bus-TrackerDB)                       │
+                                                                  ▼
+                                                        [Túnel HTTPS (Ngrok)]
+                                                                  │
+                                                                  ▼
+                                              [Backend: Node.js + Express + Socket.io]
+                                                                  │
+                                                             (WebSockets)
+                                                                  ▼
+                                               [Frontend: React + Vite + Leaflet]
+```
+
+### Etapas del Procesamiento de Telemetría
+
+1. **Adquisición de Telemetría (Hardware Embebido):** Un microcontrolador **ESP32** acoplado a un módulo receptor satelital **GPS** captura las coordenadas geográficas reales de la unidad (latitud, longitud, altitud, rumbo y conteo de satélites activos) y las transmite de forma segura vía HTTPS en paquetes JSON cada **10 segundos**.
+2. **Ingesta, Validación y Persistencia (AWS Cloud):** **AWS API Gateway** recibe la petición entrante y dispara una función **AWS Lambda**. Esta función valida la integridad del esquema JSON, estampa la marca de tiempo oficial del servidor y almacena cada traza histórica en una tabla NoSQL en **Amazon DynamoDB** (`Bus-TrackerDB`).
+3. **Puente de Comunicación Segura (Webhook y Ngrok):** Una vez confirmada la persistencia en DynamoDB, la función AWS Lambda reenvía la actualización mediante una solicitud `POST` autenticada con el encabezado de seguridad `x-api-key` hacia un túnel cifrado **Ngrok**, permitiendo conectar la nube de AWS con el servidor backend local sin exponer puertos directamente.
+4. **Cálculo Cinemático y Emisión en Vivo (Backend y Frontend):** El servidor en **Node.js** verifica la autenticidad de la llave API, procesa el estado de la unidad (cálculo de velocidad instantánea, porcentaje de avance sobre el corredor y tiempo estimado de llegada) y transmite el evento a través de **Socket.io** hacia todos los clientes conectados en **React**.
+
+---
+
+## ✨ Funcionalidades Principales
+
+### Para Pasajeros (Interfaz Pública)
+
+- **Mapa Interactivo en Tiempo Real:** Renderizado cartográfico mediante **Leaflet**, con trazado geográfico de corredores (`RoutePolyline`), marcadores dinámicos (`BusMarker`) e interpolación matemática de movimiento (`useSmoothPosition`) para desplazamientos fluidos sin saltos visuales.
+- **Modo GO y Alertas Inteligentes de Proximidad:** Módulo de seguimiento dedicado (`GoModePanel`) que calcula la distancia entre la unidad seleccionada y la ubicación del pasajero, activando notificaciones visuales y alertas auditivas (`useAlarmSound`) cuando el autobús se aproxima a su parada.
+- **Geolocalización y Sugerencia de Rutas:** Detección automática de la posición del usuario mediante la API del navegador (`useGeolocation`) para filtrar y priorizar los corredores más cercanos (`NearbyRoutes`).
+- **Avisos Operativos y Enlaces de Boletaje:** Paneles informativos sobre incidencias en ruta (`ServiceAlerts`, `AlertList`) y acceso directo a plataformas de compra de boletos por línea transportista (`PurchaseLinks`).
+- **Accesibilidad Visual:** Soporte nativo para cambio dinámico entre tema claro y tema oscuro (`ThemeToggle`, `useTheme`) con persistencia en almacenamiento local.
+
+### Para Operadores y Desarrolladores
+
+- **Panel de Supervisión Administrativa:** Interfaz privada protegida por credenciales (`AdminLogin`, `AdminDashboard`) para auditar el estado de conexión de las unidades, coordenadas exactas, telemetría recibida y monitoreo de inactividad.
+- **Entorno de Simulación de Flotilla:** Herramientas independientes (`backend/demo_flotilla.js`, `scripts/simulator.py` y `frontend/demo-flotilla.html`) diseñadas para inyectar telemetría sintética de múltiples unidades simultáneas, permitiendo realizar pruebas de estrés y demostraciones sin afectar los datos reales en producción.
+
+---
+
+## 🛠️ Stack Tecnológico
+
+| Capa del Sistema | Tecnologías y Herramientas |
+| :--- | :--- |
+| **Hardware e IoT** | Microcontrolador ESP32, Módulo GPS NEO-6M/NEO-8M, C++ / Arduino Framework |
+| **Infraestructura Cloud** | AWS API Gateway, AWS Lambda (Node.js/Python), Amazon DynamoDB, Ngrok |
+| **Backend & Tiempo Real** | Node.js, TypeScript, Express.js, Socket.io, CORS, Dotenv |
+| **Frontend & Cartografía** | React 18, TypeScript, Vite, Leaflet, React-Leaflet, CSS3 Modular |
+| **Arquitectura & Control** | Monorepo (`npm workspaces`), Git, GitHub Actions (CI) |
+
+---
+
+## 📂 Estructura del Repositorio
+
+El proyecto está estructurado como un monorepo gestionado mediante `npm workspaces` (`shared` y `frontend`), centralizando las dependencias del servidor backend y los scripts de orquestación en la raíz:
+
+```text
+Costa-Bus-Tracker/
+├── .github/                           # Flujos de integración continua (CI)
+├── backend/                           # Servidor API, Webhooks AWS y WebSockets (Node.js + TS)
+│   ├── src/
+│   │   ├── controllers/
+│   │   │   └── awsController.ts       # Validación de headers y procesamiento de paquetes AWS
+│   │   ├── routes/
+│   │   │   └── awsRoutes.ts           # Definición del endpoint POST /api/aws/webhook/bus-location
+│   │   ├── services/
+│   │   │   └── busService.ts          # Lógica de negocio: estado de unidades, velocidad, progreso y ETA
+│   │   ├── sockets/
+│   │   │   └── socketManager.ts       # Gestión de salas y emisión en vivo vía Socket.io
+│   │   └── index.ts                   # Punto de entrada Express (puerto 3001) y monitor de inactividad
+│   ├── .env                           # Variables de entorno locales del servidor (no versionado)
+│   └── demo_flotilla.js               # Script Node.js para inyectar unidades simuladas al webhook
+│
+├── documentacion/                     # Documentación técnica extendida, diagramas y notas de versión
+│
+├── frontend/                          # Aplicación web interactiva (React + Vite + TypeScript)
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── AdminDashboard.tsx     # Panel privado de monitoreo administrativo
+│   │   │   ├── AdminLogin.tsx         # Autenticación para el panel administrativo
+│   │   │   ├── AlertList.tsx          # Listado de alertas activas en el corredor
+│   │   │   ├── BusCard.tsx            # Tarjeta individual con métricas y botón de seguimiento
+│   │   │   ├── BusList.tsx            # Panel lateral de unidades activas en ruta
+│   │   │   ├── BusMarker.tsx          # Marcador dinámico de autobús en el mapa
+│   │   │   ├── GoModePanel.tsx        # Tarjeta flotante de Modo GO con alertas de proximidad
+│   │   │   ├── MapView.tsx            # Contenedor principal del mapa interactivo (Leaflet)
+│   │   │   ├── NearbyRoutes.tsx       # Detección y listado de rutas cercanas al usuario
+│   │   │   ├── PurchaseLinks.tsx      # Enlaces de compra de boletos por operador
+│   │   │   ├── RoutePolyline.tsx      # Trazado geográfico de los corredores en el mapa
+│   │   │   ├── ServiceAlerts.tsx      # Avisos generales de servicio y contingencias
+│   │   │   └── ThemeToggle.tsx        # Selector de modo claro/oscuro
+│   │   ├── hooks/
+│   │   │   ├── useAlarmSound.ts       # Control de alertas sonoras en Modo GO
+│   │   │   ├── useGeolocation.ts      # Obtención de coordenadas GPS del navegador del usuario
+│   │   │   ├── useSmoothPosition.ts   # Interpolación suave del movimiento de los marcadores
+│   │   │   ├── useSocket.ts           # Conexión WebSocket en tiempo real con el backend
+│   │   │   └── useTheme.ts            # Persistencia y cambio de tema visual
+│   │   ├── lib/
+│   │   │   └── backendUrl.ts          # Resolución dinámica de la URL del servidor backend
+│   │   ├── App.tsx                    # Componente raíz, estado global y selector de rutas
+│   │   ├── main.tsx                   # Punto de montaje de React
+│   │   ├── styles.css                 # Estilos globales y variables CSS de la interfaz
+│   │   └── vite-env.d.ts              # Definiciones de entorno para Vite
+│   ├── demo-flotilla.html             # Demostración estática independiente con múltiples unidades
+│   ├── index.html                     # Plantilla HTML principal de la aplicación
+│   ├── package.json                   # Dependencias y scripts exclusivos del frontend
+│   ├── tsconfig.app.json              # Configuración TypeScript para el código de la app
+│   ├── tsconfig.json                  # Configuración TypeScript base del frontend
+│   ├── tsconfig.node.json             # Configuración TypeScript para entorno Node/Vite
+│   └── vite.config.ts                 # Configuración del empaquetador Vite
+│
+├── scripts/
+│   └── simulator.py                   # Script auxiliar en Python para pruebas de simulación GPS
+│
+├── shared/                            # Paquete compartido @costa-bus/shared
+│   ├── src/                           # Tipos TypeScript, interfaces de telemetría y utilidades
+│   ├── package.json                   # Configuración del workspace compartido
+│   └── tsconfig.json                  # Configuración de compilación TypeScript
+│
+├── .env.example                       # Plantilla de referencia para variables de entorno
+├── .gitignore                         # Archivos y directorios excluidos del control de versiones
+├── package.json                       # Configuración raíz, workspaces y scripts globales
+└── README.md                          # Documentación principal del repositorio
+```
+
+---
+
+## ⚙️ Instalación y Configuración Local
+
+### Requisitos Previos
+
+- **Node.js** `v18.0.0` o superior y **npm** `v9.0.0` o superior.
+- **Python** `3.9+` *(opcional, requerido únicamente si se desea ejecutar `scripts/simulator.py`)*.
+- **Ngrok** *(requerido para recibir telemetría en vivo desde AWS Lambda en entorno local)*.
+
+### 1. Clonar el Repositorio e Instalar Dependencias
 
 ```bash
-npm install      # instala los 4 workspaces
-npm run dev      # levanta backend + simulator + frontend a la vez
+git clone https://github.com/<tu-usuario>/Costa-Bus-Tracker.git
+cd Costa-Bus-Tracker
+npm install
 ```
 
-- Backend: http://localhost:4000
-- Frontend: http://localhost:5173
+### 2. Configurar Variables de Entorno
 
-### Scripts disponibles
-
-| Comando             | Descripción                                     |
-| ------------------- | ----------------------------------------------- |
-| `npm run dev`       | Backend + Simulator + Frontend (desarrollo)     |
-| `npm run build`     | Compila shared, backend, simulator y frontend   |
-| `npm run typecheck` | Verifica tipos en backend, simulator y frontend |
-| `npm run start`     | Backend + Simulator en modo producción          |
-
----
-
-## Rutas cubiertas
-
-1. **Guadalajara → Barra de Navidad** (vía Autlán, Casimiro Castillo, La Huerta, Melaque)
-2. **Guadalajara → Manzanillo** (vía Colima)
-3. **Manzanillo → Barra de Navidad** (vía Cihuatlán)
-4. **Barra de Navidad → Puerto Vallarta** (vía Melaque, Tomatlán)
-
-Cada ruta se simula **en ambos sentidos** (ida y regreso) con **2 unidades por
-sentido**, es decir **16 autobuses** en total (4 rutas × 2 sentidos × 2 unidades).
-
-## Operadores
-
-| Operador                    | Rutas cubiertas                                                  | Color   | Compra                                     | Respaldo                                         |
-| --------------------------- | ---------------------------------------------------------------- | ------- | ------------------------------------------ | ------------------------------------------------ |
-| ETN Turistar Lujo           | Guadalajara ↔ Colima ↔ Manzanillo ↔ Barra de Navidad (ida/vuelta) | Plata   | https://www.etn.com.mx                     | —                                                |
-| Primera Plus                | Todas las rutas                                                  | Dorado  | https://www.primeraplus.com.mx             | —                                                |
-| Autocamiones del Pacífico   | Todas las rutas                                                  | Azul    | https://www.autocamionesdelpacifico.com.mx | https://www.facebook.com/autocamionesdelpacifico |
-
-Cada línea tiene un color propio (`shared/src/operators.ts`) que tiñe el marcador
-del autobús en el mapa, el acento de su tarjeta en el panel y el número de la
-ruta en la lista de rutas cercanas.
-
----
-
-## Características del frontend
-
-- Mapa interactivo (Leaflet + OpenStreetMap), tiles oscuros CARTO.
-- Polilíneas punteadas por ruta y paradas marcadas.
-- Autobuses moviéndose en tiempo real vía WebSocket, **con el color de su línea**
-  (dorado Primera Plus, azul Autocamiones del Pacífico, plata ETN).
-- **Rutas activas cerca de ti**: al compartir la ubicación, lista las rutas con una
-  parada a menos de 40 km, en ambos sentidos (ida y regreso), con distancia y ETA.
-  Cada fila va teñida con el color de la ruta y su número con el color de la línea;
-  al pulsarla se selecciona esa ruta y se listan sus unidades.
-- Panel lateral: selector de ruta (ida/regreso), lista de autobuses con **próxima
-  parada + ETA**, **alertas de servicio** cuando un bus está a **≤ 5 min** y enlaces
-  de compra según la ruta.
-- **Modo GO**: navegación con alertas de sonido cuando el bus está por llegar
-  (generadas con Web Audio API, sin assets externos).
-- **Modo offline básico**: rutas y paradas se cargan sin conexión; el último estado
-  se cachea en `localStorage` y se restaura al volver a abrir.
-- Diseño **dark mode**, responsivo, en **español**.
-
----
-
-## Despliegue (fase 1)
-
-La app tiene dos piezas desplegables por separado: el **frontend** (estático, va a
-Netlify) y el **backend + simulador** (procesos Node con WebSocket, van a un host
-que ejecute Node: Railway, Render, Fly.io…).
-
-Orden recomendado: **backend → simulador → frontend** (el frontend necesita la URL
-del backend, y el simulador también).
-
-### 1. Backend + simulador (Node)
-
-En los tres hosts de abajo, `backend` y `simulator` son **dos servicios separados**
-sobre el **mismo repositorio**. Antes de nada, aquí tienes cada variable:
-
-| Variable      | Servicio  | Ejemplo                                        |
-| ------------- | --------- | ---------------------------------------------- |
-| `CORS_ORIGIN` | backend   | `https://costa-bus-tracker.netlify.app`        |
-| `BACKEND_URL` | simulator | `https://costa-bus-backend.up.railway.app`     |
-
-`PORT` normalmente lo inyecta el host; solo defínelo si es necesario.
-
-> ⚠️ **Importante:** ambos servicios importan `@costa-bus/shared`, así que el
-> build debe compilar `shared` **antes** que el servicio. Todos los archivos de
-> configuración incluidos ya lo hacen (`npm run build --workspace @costa-bus/shared
-> && npm run build --workspace @costa-bus/<servicio>`).
-
-#### Opción A — Render (recomendada; hay blueprint listo)
-
-El proyecto trae **`render.yaml`** en la raíz con los dos servicios ya declarados.
-
-1. Sube el repo a GitHub.
-2. Render → **New → Blueprint** → selecciona el repositorio.
-3. Render detecta `render.yaml` y crea `costa-bus-backend` (web) y
-   `costa-bus-simulator` (worker).
-4. Completa en el panel las variables marcadas como `sync: false`:
-   - `costa-bus-backend` → `CORS_ORIGIN` = tu dominio de Netlify.
-   - `costa-bus-simulator` → `BACKEND_URL` = la URL pública del backend
-     (`https://costa-bus-backend.onrender.com`).
-
-> En el plan free de Render, el backend se "duerme" por inactividad; la primera
-> carga tras un rato puede tardar unos segundos en reconectar el WebSocket.
-
-#### Opción B — Railway
-
-Railway despliega por servicio desde un repo. Crea **dos servicios** apuntando al
-mismo repo y, en cada uno, define **Root Directory = `backend`** y `simulator`
-respectivamente. Cada carpeta incluye `railway.json` con su `buildCommand`/`startCommand`,
-así que Railway no necesita configuración extra. Agrega las variables `CORS_ORIGIN`
-y `BACKEND_URL` en la pestaña *Variables*.
-
-#### Opción C — Contenedores (Fly.io, Cloud Run, Docker local)
-
-El `Dockerfile` de la raíz compila cualquiera de los dos servicios mediante el
-argumento `SERVICE`:
+Copia la plantilla `.env.example` hacia los archivos `.env` correspondientes dentro de `backend/` y `frontend/`:
 
 ```bash
-docker build --build-arg SERVICE=backend   -t costa-bus-backend  .
-docker build --build-arg SERVICE=simulator -t costa-bus-simulator .
+cp .env.example backend/.env
 ```
 
-### 2. Frontend (Netlify)
+Asegúrate de definir las siguientes variables críticas:
 
-El **`netlify.toml`** de la **raíz del repositorio** ya define todo el build.
-Solo conecta el repo en Netlify; **deja vacíos** en el panel *Base directory*,
-*Build command* y *Publish directory*:
-
-| Campo de Netlify      | Valor                                                          |
-| --------------------- | -------------------------------------------------------------- |
-| **Base directory**    | *(vacío — lo define el `netlify.toml`)*                          |
-| **Build command**     | *(vacío — lo define el `netlify.toml`)*                          |
-| **Publish directory** | *(vacío — lo define el `netlify.toml`)*                          |
-| **Variable**          | `VITE_BACKEND_URL=https://costa-bus-backend.onrender.com`        |
-
-El `netlify.toml` raíz ejecuta el build desde la raíz con workspaces:
-
-```toml
-[build]
-  command = "npm run build --workspace @costa-bus/shared && npm run build --workspace @costa-bus/frontend"
-  publish = "frontend/dist"
+```env
+# Configuración del Backend (backend/.env)
+PORT=3001
+AWS_WEBHOOK_API_KEY=tu_llave_secreta_compartida_con_lambda
+ADMIN_PASSWORD=contrasena_segura_panel_admin
+CORS_ORIGIN=http://localhost:5173
 ```
 
-Esto compila `@costa-bus/shared` (dependencia de tipos) y luego **solo** el
-frontend, publicando `frontend/dist`. **No** ejecuta el `npm run build` raíz, que
-también compilaría backend y simulator (esos van en Render).
+```env
+# Configuración del Frontend (frontend/.env)
+VITE_BACKEND_URL=http://localhost:3001
+```
 
-> ⚠️ Errores comunes:
-> - `Deploy directory 'dist' does not exist` → la config del panel quedó con
->   "Base directory = `frontend`". Un `base` explícito en el `netlify.toml` raíz
->   sobrescribe el panel ([docs](https://docs.netlify.com/build/configure-builds/monorepos/));
->   al no fijar `base` y publicar `frontend/dist`, funciona igual.
-> - Build que intenta compilar backend/simulator → se está usando el `npm run build`
->   raíz; usa los comandos con `--workspace`.
+### 3. Compilar el Paquete Compartido y Ejecutar Servicios
 
-Sin `VITE_BACKEND_URL`, el bundle intentaría conectarse a `localhost:4000` y el
-mapa cargaría sin datos. Ver `.env.example` para la plantilla completa.
-
-### Integración continua
-
-El workflow **`.github/workflows/ci.yml`** ejecuta `npm run typecheck` y
-`npm run build` en cada push o pull request a `main`. No despliega: Render y
-Netlify hacen el deploy automático por su cuenta al detectar el push en GitHub.
-
-### Primer push a GitHub
-
-Si el repo aún no tiene remoto:
+Construye primero los tipos compartidos (`@costa-bus/shared`) y levanta el servidor backend junto con el cliente frontend en terminales separadas:
 
 ```bash
-git remote add origin https://github.com/TU-USUARIO/costa-bus-tracker.git
-git push -u origin main
+# 1. Compilar workspace compartido
+npm run build --workspace=shared
+
+# 2. Iniciar servidor backend (Puerto 3001)
+npm run dev:backend
+
+# 3. Iniciar aplicación web frontend (Puerto 5173)
+npm run dev --workspace=frontend
+```
+
+### 4. Exponer el Backend Local para AWS Lambda *(Opcional - Telemetría Real)*
+
+Para recibir los paquetes reenviados desde AWS Lambda hacia tu entorno local, abre un túnel HTTPS apuntando al puerto del backend:
+
+```bash
+ngrok http 3001
+```
+
+Copia la URL pública HTTPS generada por Ngrok y configúrala en las variables de entorno de tu función **AWS Lambda** apuntando a `/api/aws/webhook/bus-location`.
+
+---
+
+## 📡 Especificación del Webhook de Telemetría (AWS → Backend)
+
+El servidor backend expone el siguiente endpoint para recibir los paquetes reenviados desde AWS Lambda:
+
+- **Endpoint:** `POST /api/aws/webhook/bus-location`
+- **Encabezados Requeridos:**
+  - `Content-Type: application/json`
+  - `x-api-key: <AWS_WEBHOOK_API_KEY>`
+
+### Ejemplo de Carga Útil (Payload JSON)
+
+```json
+{
+  "busId": "AUT-104",
+  "routeId": "autlan-melaque",
+  "latitude": 19.48291,
+  "longitude": -104.64812,
+  "altitude": 312.5,
+  "speed": 64.2,
+  "satellites": 9,
+  "timestamp": "2026-11-15T14:32:10.000Z"
+}
+```
+
+### Prueba Rápida con `curl`
+
+Puedes verificar que el webhook local responde correctamente ejecutando:
+
+```bash
+curl -X POST http://localhost:3001/api/aws/webhook/bus-location \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: tu_llave_secreta_compartida_con_lambda" \
+  -d '{
+    "busId": "AUT-104",
+    "routeId": "autlan-melaque",
+    "latitude": 19.48291,
+    "longitude": -104.64812,
+    "altitude": 312.5,
+    "speed": 64.2,
+    "satellites": 9,
+    "timestamp": "2026-11-15T14:32:10.000Z"
+  }'
 ```
 
 ---
 
-### Archivos de despliegue incluidos
+## 🧪 Pruebas y Simulación de Flotilla
 
-| Archivo                     | Para qué sirve                                        |
-| --------------------------- | ----------------------------------------------------- |
-| `render.yaml`               | Blueprint de Render (backend + simulador juntos)      |
-| `backend/render.yaml`       | Variante por-servicio (referencia)                    |
-| `simulator/render.yaml`     | Variante por-servicio (referencia)                    |
-| `backend/railway.json`      | Build/start del backend en Railway                    |
-| `simulator/railway.json`    | Build/start del simulador en Railway                  |
-| `backend/Procfile`          | `web: node dist/index.js` (Railway/Heroku)            |
-| `simulator/Procfile`        | `worker: node dist/index.js`                          |
-| `Dockerfile` + `.dockerignore` | Hosts de contenedores (Fly.io, Cloud Run)          |
-| `netlify.toml` (raíz)       | Build y publish del frontend en Netlify               |
-| `.github/workflows/ci.yml`  | GitHub Actions: typecheck + build en cada push/PR      |
+Para validar el comportamiento del mapa, el cálculo de tiempos estimados de llegada (ETA) y las alertas del **Modo GO** sin necesidad de contar con una unidad física en movimiento, utiliza cualquiera de los simuladores incluidos:
+
+- **Simulador en Node.js (Múltiples unidades en ruta):**
+  ```bash
+  node backend/demo_flotilla.js
+  ```
+
+- **Simulador en Python (Inyección parametrizable):**
+  ```bash
+  python scripts/simulator.py
+  ```
+
+- **Vista previa estática:** Abre directamente el archivo `frontend/demo-flotilla.html` en cualquier navegador web para visualizar una demostración autocontenida del comportamiento de la flotilla.
 
 ---
 
-## Migración a GPS real (fase 2)
+## 👥 Equipo de Desarrollo e Integración
 
-El backend no sabe de dónde vienen los datos: solo escucha `bus-position` con un
-payload `BusPosition`. Para pasar a producción se reemplaza el workspace `simulator`
-por un servicio que reciba la telemetría del dispositivo **Teltonika** (Codec 8/8E vía
-TCP, o HTTP) y emita exactamente el mismo evento con los mismos campos. El frontend y el
-panel lateral siguen funcionando sin cambios.
+Este proyecto fue concebido, diseñado, desarrollado e integrado por:
+
+- **Sugely Díaz**
+- **Williams Díaz**
+- **Cuauhtémoc Flores**
+- **Raúl Beltrán**
+
+📍 **Lugar y Fecha:** La Huerta, Jalisco, México — Noviembre de 2026.
+
+---
+
+## 📄 Licencia y Uso
+
+Este software ha sido desarrollado con fines académicos, tecnológicos y de innovación en movilidad regional para la Costa de Jalisco. Todos los derechos reservados por el equipo desarrollador.
