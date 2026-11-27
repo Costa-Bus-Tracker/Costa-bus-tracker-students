@@ -1,5 +1,10 @@
 // backend/demo_flotilla.js
-require("dotenv").config({ path: "./backend/.env" });
+import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, ".env") });
 
 const WEBHOOK_URL = "http://localhost:3001/api/aws/webhook/bus-location";
 const WEBHOOK_SECRET = process.env.AWS_WEBHOOK_SECRET || "tu_llave_secreta_aqui";
